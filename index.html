@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self'; manifest-src 'self'; worker-src 'self'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#0f766e">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <title>Lockmaster</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body data-mode="completo">
+<main>
+
+  <!-- ===== Desbloquear ===== -->
+  <section id="screen-unlock" class="screen center" hidden>
+    <div class="brand">
+      <img src="icons/icon-192.png" alt="" width="64" height="64">
+      <h1>Lockmaster</h1>
+    </div>
+    <p id="unlock-info" class="muted"></p>
+
+    <form id="form-unlock" autocomplete="off">
+      <div class="field">
+        <label for="unlock-pw">Palavra-passe mestra</label>
+        <input id="unlock-pw" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" required>
+      </div>
+      <p id="unlock-error" class="error" role="alert" hidden></p>
+      <button id="btn-unlock" class="btn primary block" type="submit">Desbloquear</button>
+    </form>
+
+    <div class="stack">
+      <button id="btn-open" class="btn block" type="button">Abrir ficheiro do cofre…</button>
+      <button id="btn-clear-pending" class="btn ghost block" type="button" hidden>Usar o cofre guardado neste dispositivo</button>
+      <button id="btn-create" class="btn ghost block edit-only" type="button">Criar novo cofre</button>
+    </div>
+    <button id="btn-mode" class="link" type="button"></button>
+    <input id="file-input" type="file" hidden>
+  </section>
+
+  <!-- ===== Criar cofre ===== -->
+  <section id="screen-create" class="screen center" hidden>
+    <h1>Novo cofre</h1>
+    <p class="muted">Escolhe uma palavra-passe mestra. É a única que tens de memorizar: com ela abres tudo o resto.</p>
+    <form id="form-create" autocomplete="off">
+      <div class="field">
+        <label for="create-pw">Palavra-passe mestra</label>
+        <input id="create-pw" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" required>
+        <div id="create-meter" class="meter" data-level="0"><i></i></div>
+        <small id="create-meter-label" class="muted"></small>
+      </div>
+      <div class="field">
+        <label for="create-pw2">Repetir palavra-passe</label>
+        <input id="create-pw2" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" required>
+      </div>
+      <label class="check">
+        <input id="create-ack" type="checkbox">
+        <span>Percebo que, se me esquecer desta palavra-passe, <strong>não há forma de recuperar os dados</strong>.</span>
+      </label>
+      <p id="create-error" class="error" role="alert" hidden></p>
+      <button id="btn-create-submit" class="btn primary block" type="submit">Criar cofre</button>
+      <button id="btn-create-cancel" class="btn ghost block" type="button">Cancelar</button>
+    </form>
+    <p class="muted small">Dica: uma frase com 4 ou 5 palavras que só tu conheces é fácil de lembrar e difícil de adivinhar. Mínimo de 12 caracteres.</p>
+  </section>
+
+  <!-- ===== Lista ===== -->
+  <section id="screen-main" hidden>
+    <header class="top">
+      <div class="top-row">
+        <div class="space-pick">
+          <span class="lead" data-icon="folder"></span>
+          <select id="space-select" aria-label="Espaço"></select>
+        </div>
+        <button id="btn-manage" class="btn small edit-only" type="button" title="Gerir espaços e categorias">Gerir</button>
+        <button id="btn-lock" class="icon-btn" type="button" title="Bloquear" aria-label="Bloquear"><span data-icon="lock"></span></button>
+        <button id="btn-settings" class="icon-btn" type="button" title="Definições" aria-label="Definições"><span data-icon="adjustments-horizontal"></span></button>
+      </div>
+      <div class="top-row">
+        <div class="searchbox">
+          <span class="lead" data-icon="search"></span>
+          <input id="search" type="search" placeholder="Pesquisar…" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Pesquisar">
+        </div>
+        <button id="btn-search-all" class="chip" type="button" aria-pressed="false" title="Pesquisar em todos os espaços">Todos os espaços</button>
+      </div>
+      <nav id="chips" class="chips" aria-label="Categorias" hidden></nav>
+    </header>
+    <div id="banner" class="banner" hidden>
+      <span id="banner-text"></span>
+      <button id="btn-banner" class="btn small" type="button"></button>
+    </div>
+    <ul id="list" class="list"></ul>
+    <p id="empty" class="muted center-text" hidden></p>
+    <button id="btn-add" class="fab edit-only" type="button" aria-label="Nova password" title="Nova password"><span data-icon="plus"></span></button>
+  </section>
+
+</main>
+
+<!-- ===== Ver password ===== -->
+<dialog id="dlg-view">
+  <div class="dlg-head">
+    <h2 id="view-title"></h2>
+    <button class="icon-btn" type="button" data-close aria-label="Fechar"><span data-icon="x"></span></button>
+  </div>
+  <p id="view-path" class="muted small path"></p>
+  <div id="view-body"></div>
+  <div class="dlg-actions edit-only">
+    <button id="btn-delete" class="btn danger" type="button"><span data-icon="trash"></span>Apagar</button>
+    <button id="btn-move" class="btn" type="button"><span data-icon="arrows-move"></span>Mover</button>
+    <button id="btn-edit" class="btn primary" type="button"><span data-icon="edit"></span>Editar</button>
+  </div>
+</dialog>
+
+<!-- ===== Criar / editar password ===== -->
+<dialog id="dlg-entry">
+  <form id="form-entry" autocomplete="off">
+    <div class="dlg-head">
+      <h2 id="entry-heading">Nova password</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Fechar"><span data-icon="x"></span></button>
+    </div>
+    <div class="field">
+      <label for="e-title">Nome</label>
+      <input id="e-title" maxlength="120" required placeholder="Ex.: Banco, Email, Netflix">
+    </div>
+    <div class="two">
+      <div class="field">
+        <label for="e-space">Espaço</label>
+        <select id="e-space"></select>
+      </div>
+      <div class="field">
+        <label for="e-cat">Categoria</label>
+        <select id="e-cat"></select>
+      </div>
+    </div>
+    <div class="field">
+      <label for="e-url">Site</label>
+      <input id="e-url" maxlength="300" inputmode="url" autocapitalize="none" spellcheck="false" placeholder="exemplo.pt">
+    </div>
+    <div class="field">
+      <label for="e-user">Utilizador / email</label>
+      <input id="e-user" maxlength="200" autocapitalize="none" spellcheck="false" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="e-pass">Palavra-passe</label>
+      <div class="row">
+        <input id="e-pass" type="password" maxlength="500" autocapitalize="none" spellcheck="false" autocomplete="new-password">
+        <button id="btn-reveal" class="icon-btn" type="button"></button>
+        <button id="btn-gen-quick" class="icon-btn" type="button" title="Gerar palavra-passe aleatória" aria-label="Gerar palavra-passe aleatória"><span data-icon="refresh"></span></button>
+      </div>
+      <div id="e-meter" class="meter" data-level="0"><i></i></div>
+      <small id="e-meter-label" class="muted"></small>
+    </div>
+    <details class="gen">
+      <summary>Opções do gerador</summary>
+      <label class="lenrow" for="g-len">
+        <span>Tamanho: <output id="g-len-out">20</output></span>
+        <input id="g-len" type="range" min="8" max="64" value="20">
+      </label>
+      <label class="check"><input id="g-lower" type="checkbox" checked><span>Letras minúsculas</span></label>
+      <label class="check"><input id="g-upper" type="checkbox" checked><span>Letras maiúsculas</span></label>
+      <label class="check"><input id="g-digits" type="checkbox" checked><span>Números</span></label>
+      <label class="check"><input id="g-symbols" type="checkbox" checked><span>Símbolos</span></label>
+      <label class="check"><input id="g-noamb" type="checkbox" checked><span>Evitar caracteres ambíguos (0 O 1 l I)</span></label>
+      <button id="btn-generate" class="btn small" type="button"><span data-icon="refresh"></span>Gerar e usar</button>
+    </details>
+    <div class="field">
+      <label for="e-notes">Notas</label>
+      <textarea id="e-notes" rows="3" maxlength="2000"></textarea>
+    </div>
+    <div class="dlg-actions">
+      <button class="btn" type="button" data-close>Cancelar</button>
+      <button class="btn primary" type="submit">Guardar</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ===== Mover password ===== -->
+<dialog id="dlg-move">
+  <form id="form-move" autocomplete="off">
+    <div class="dlg-head">
+      <h2>Mover password</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Fechar"><span data-icon="x"></span></button>
+    </div>
+    <div class="field">
+      <label for="mv-space">Espaço</label>
+      <select id="mv-space"></select>
+    </div>
+    <div class="field">
+      <label for="mv-cat">Categoria</label>
+      <select id="mv-cat"></select>
+    </div>
+    <div class="dlg-actions">
+      <button class="btn" type="button" data-close>Cancelar</button>
+      <button class="btn primary" type="submit"><span data-icon="arrows-move"></span>Mover</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ===== Gerir espaços e categorias ===== -->
+<dialog id="dlg-manage">
+  <div class="dlg-head">
+    <h2>Espaços e categorias</h2>
+    <button class="icon-btn" type="button" data-close aria-label="Fechar"><span data-icon="x"></span></button>
+  </div>
+
+  <section class="group">
+    <h3>Espaços</h3>
+    <ul id="mg-spaces" class="mg"></ul>
+    <form id="form-add-space" class="row" autocomplete="off">
+      <input id="add-space" maxlength="60" placeholder="Novo espaço (ex.: Filho)" aria-label="Nome do novo espaço">
+      <button class="btn small" type="submit"><span data-icon="plus"></span>Adicionar</button>
+    </form>
+  </section>
+
+  <section class="group">
+    <h3 id="mg-cats-title">Categorias</h3>
+    <ul id="mg-cats" class="mg"></ul>
+    <p id="mg-cats-empty" class="muted small" hidden>Ainda não há categorias neste espaço.</p>
+    <form id="form-add-cat" class="row" autocomplete="off">
+      <input id="add-cat" maxlength="60" placeholder="Nova categoria (ex.: Banco)" aria-label="Nome da nova categoria">
+      <button class="btn small" type="submit"><span data-icon="plus"></span>Adicionar</button>
+    </form>
+  </section>
+
+  <p class="muted small">Para apagar um espaço, tem de estar vazio. Ao apagar uma categoria, as passwords ficam em "Sem categoria". Para mudar um nome, edita-o diretamente.</p>
+</dialog>
+
+<!-- ===== Definições ===== -->
+<dialog id="dlg-settings">
+  <div class="dlg-head">
+    <h2>Definições</h2>
+    <button class="icon-btn" type="button" data-close aria-label="Fechar"><span data-icon="x"></span></button>
+  </div>
+
+  <section class="group">
+    <h3>Utilização</h3>
+    <label class="check">
+      <input id="s-consulta" type="checkbox">
+      <span>Modo consulta (só leitura)<br><small class="muted">Esconde criar, editar, mover e apagar. Ideal para o telemóvel.</small></span>
+    </label>
+    <div class="field">
+      <label for="s-lock">Bloquear automaticamente após</label>
+      <select id="s-lock">
+        <option value="1">1 minuto</option>
+        <option value="2">2 minutos</option>
+        <option value="5">5 minutos</option>
+        <option value="10">10 minutos</option>
+        <option value="30">30 minutos</option>
+      </select>
+    </div>
+  </section>
+
+  <section class="group">
+    <h3>Ficheiro do cofre</h3>
+    <p id="s-file-info" class="muted small"></p>
+    <button id="s-export" class="btn block" type="button"><span data-icon="download"></span>Exportar cópia (descarregar)</button>
+    <button id="s-link" class="btn block edit-only" type="button"><span data-icon="link"></span>Ligar a um ficheiro (ex.: pasta do Google Drive)…</button>
+    <button id="s-savefile" class="btn block edit-only" type="button">Guardar agora no ficheiro ligado</button>
+    <button id="s-unlink" class="btn ghost block edit-only" type="button">Desligar do ficheiro</button>
+    <button id="s-refresh" class="btn block" type="button"><span data-icon="refresh"></span>Atualizar a partir de um ficheiro…</button>
+  </section>
+
+  <section class="group edit-only">
+    <h3>Segurança</h3>
+    <button id="s-master" class="btn block" type="button"><span data-icon="key"></span>Alterar palavra-passe mestra</button>
+  </section>
+
+  <section class="group">
+    <h3>Este dispositivo</h3>
+    <button id="s-wipe" class="btn danger block" type="button"><span data-icon="trash"></span>Apagar cofre deste dispositivo</button>
+  </section>
+</dialog>
+
+<!-- ===== Alterar palavra-passe mestra ===== -->
+<dialog id="dlg-master">
+  <form id="form-master" autocomplete="off">
+    <div class="dlg-head">
+      <h2>Alterar palavra-passe mestra</h2>
+      <button class="icon-btn" type="button" data-close aria-label="Fechar"><span data-icon="x"></span></button>
+    </div>
+    <div class="field">
+      <label for="m-cur">Palavra-passe atual</label>
+      <input id="m-cur" type="password" autocomplete="off" required>
+    </div>
+    <div class="field">
+      <label for="m-new">Nova palavra-passe</label>
+      <input id="m-new" type="password" autocomplete="off" required>
+      <div id="m-meter" class="meter" data-level="0"><i></i></div>
+      <small id="m-meter-label" class="muted"></small>
+    </div>
+    <div class="field">
+      <label for="m-new2">Repetir nova palavra-passe</label>
+      <input id="m-new2" type="password" autocomplete="off" required>
+    </div>
+    <p id="m-error" class="error" role="alert" hidden></p>
+    <p class="muted small">Depois de alterar, volta a exportar ou guardar o ficheiro: as cópias antigas continuam a abrir com a palavra-passe antiga.</p>
+    <div class="dlg-actions">
+      <button class="btn" type="button" data-close>Cancelar</button>
+      <button id="m-submit" class="btn primary" type="submit">Alterar</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" class="toast" popover="manual" role="status" aria-live="polite"></div>
+</body>
+</html>
